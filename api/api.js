@@ -5,6 +5,8 @@ const xlsx = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 
+const gamesSavePath = './data/myGames.xlsx'
+
 const tourneys = [
     "serieA",
     "serieB",
@@ -18,6 +20,43 @@ const years = [
 ]
 
 app.use(express.json());
+
+// GET MY GAMES
+
+app.get('/myGames', (req, res) => {
+    try {
+        const workbook = xlsx.readFile(gamesSavePath);
+
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+    
+        const data = xlsx.utils.sheet_to_json(sheet);
+
+        data.sort((a, b) => {
+            const dateA = parseDate(a.date);
+            const dateB = parseDate(b.date);
+            return dateB - dateA;
+        });
+    
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+    
+        const startIndex = (page - 1) * limit;
+        const endIndex = page * limit;
+    
+        const paginatedData = data.slice(startIndex, endIndex);
+    
+        res.json({
+            currentPage: page, 
+            totalPages: Math.ceil(data.length / limit),
+            totalItems: data.length,
+            itemsPerPage: limit,
+            results: paginatedData
+        });
+    } catch (error) {
+        console.error('Erro ao ler o arquivo XLSX:', error);
+    }
+});
 
 // GET ALL GAMES
 
@@ -150,7 +189,7 @@ app.post('/save', (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Erro ao salvar o jogo' });
     }
-});
+})
 
 // DELETE GAME
 
@@ -209,12 +248,11 @@ function parseDate(dateString) {
 }
 
 const saveGameToXLSX = (jogo) => {
-    const filePath = './games.xlsx';
     let workbook;
     const sheetName = 'Jogos';
 
-    if (fs.existsSync(filePath)) {
-        workbook = xlsx.readFile(filePath);
+    if (fs.existsSync(gamesSavePath)) {
+        workbook = xlsx.readFile(gamesSavePath);
     } else {
         workbook = xlsx.utils.book_new();
     }
@@ -257,19 +295,18 @@ const saveGameToXLSX = (jogo) => {
     const newWorksheet = xlsx.utils.json_to_sheet(data);
     workbook.Sheets[sheetName] = newWorksheet;
 
-    xlsx.writeFile(workbook, filePath);
+    xlsx.writeFile(workbook, gamesSavePath);
 };
 
 const deleteGameFromXLSX = (id) => {
-    const filePath = './games.xlsx';
     const sheetName = 'Jogos';
 
-    if (!fs.existsSync(filePath)) {
+    if (!fs.existsSync(gamesSavePath)) {
         console.log("Arquivo não encontrado.")
         throw new Error('Arquivo não encontrado.');
     }
 
-    const workbook = xlsx.readFile(filePath);
+    const workbook = xlsx.readFile(gamesSavePath);
     let worksheet = workbook.Sheets[sheetName];
 
     if (!worksheet) {
@@ -289,5 +326,5 @@ const deleteGameFromXLSX = (id) => {
     const newWorksheet = xlsx.utils.json_to_sheet(newData);
     workbook.Sheets[sheetName] = newWorksheet;
 
-    xlsx.writeFile(workbook, filePath);
+    xlsx.writeFile(workbook, gamesSavePath);
 };
