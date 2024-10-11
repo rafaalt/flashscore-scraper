@@ -72,7 +72,7 @@ def getGameInfo(gameId):
         return None
 
 def getGamesId(ano):
-    url = f'https://www.flashscore.com.br/futebol/america-do-sul/copa-libertadores-{ano}/resultados/'
+    url = f'https://www.flashscore.com.br/futebol/brasil/serie-b-{ano}/resultados/'
     driver.get(url)
     try: 
         WebDriverWait(driver, 5).until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'button#onetrust-accept-btn-handler')))
@@ -101,7 +101,7 @@ options.add_argument('--headless')
 options.add_argument('--disable-gpu')
 
 driver = webdriver.Chrome(service=service, options=options)
-array = [2021, 2022, 2023]
+array = [2021]
 for ano in array:
     ids = getGamesId(ano)
     games = []
