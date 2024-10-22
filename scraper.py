@@ -22,6 +22,7 @@ def getSummaryIndex(text):
         return 3
     else: 
         return 0
+    
 def getGameInfo(gameId):
     url = getUrl(gameId)
     driver.get(url)
@@ -72,7 +73,7 @@ def getGameInfo(gameId):
         return None
 
 def getGamesId(ano):
-    url = f'https://www.flashscore.com.br/futebol/brasil/serie-b-{ano}/resultados/'
+    url = f'https://www.flashscore.com.br/futebol/america-do-sul/{ano}/resultados/'
     driver.get(url)
     try: 
         WebDriverWait(driver, 5).until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'button#onetrust-accept-btn-handler')))
@@ -101,7 +102,11 @@ options.add_argument('--headless')
 options.add_argument('--disable-gpu')
 
 driver = webdriver.Chrome(service=service, options=options)
-array = [2021]
+array = [#"brasil/taca-do-brasil",
+         #"brasil/serie-b",
+         #"brasil/brasileirao-betano",
+         "copa-libertadores",
+         "copa-sul-americana"]
 for ano in array:
     ids = getGamesId(ano)
     games = []
@@ -136,7 +141,7 @@ for ano in array:
 
         df_jogos = pd.DataFrame(data)
 
-        df_jogos.to_excel(f'sulamericana_{ano}.xlsx', index=False)
+        df_jogos.to_excel(f'{ano}_2024.xlsx', index=False)
 
     getTable(games)
 

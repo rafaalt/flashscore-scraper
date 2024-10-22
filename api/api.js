@@ -16,7 +16,7 @@ const tourneys = [
 ]
 
 const years = [
-    2021, 2922, 2023
+    2021, 2022, 2023, 2024
 ]
 
 app.use(express.json());
@@ -55,7 +55,94 @@ app.get('/myGames', (req, res) => {
         });
     } catch (error) {
         console.error('Erro ao ler o arquivo XLSX:', error);
+        res.status(400).json({ error: 'Erro ao ler o arquivo XLSX' });
     }
+});
+
+app.get('/team/:team/:side', (req, res) => {
+    const data = getAllGames()
+    console.log(data.length)
+    const team = req.params.team
+    const side = req.params.side
+
+    const teamName = normalizeString(team)
+    var newData = data
+
+    if (side == "home") {
+        newData = newData.filter(game => normalizeString(game.homeTeam).includes(teamName))
+    } else if (side == "away") {
+        newData = newData.filter(game => normalizeString(game.awayTeam).includes(teamName))
+    } else {
+        newData = newData.filter(game => normalizeString(game.homeTeam).includes(teamName) || normalizeString(game.awayTeam).includes(teamName))
+    }
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+
+    const paginatedData = newData.slice(startIndex, endIndex);
+
+    res.json({
+        currentPage: page, 
+        totalPages: Math.ceil(newData.length / limit),
+        totalItems: newData.length,
+        itemsPerPage: limit,
+        results: paginatedData
+    });
+});
+
+// SEARCH GAME
+
+app.post('/search', (req, res) => {
+    const {
+        homeTeam,
+        awayTeam,
+        scoreHome,
+        scoreAway,
+        year,
+        tourney
+    } = req.body;
+    var data
+    if (year && tourney) {
+        data = getTourneyYearGames(tourney, year)
+    } else if (year) {
+        data = getYearGames(year)
+    } else if (tourney) {
+        data = getTourneyGames(tourney)
+    } else {
+        data = getAllGames()
+    }
+    var newData = data
+    if (awayTeam) {
+        newData = newData.filter(game => normalizeString(game.awayTeam).includes(normalizeString(awayTeam)))
+        newData = newData.filter(game => normalizeString(game.homeTeam).includes(normalizeString(homeTeam)))
+    } else {
+    newData = newData.filter(game => normalizeString(game.homeTeam).includes(normalizeString(homeTeam))
+     || normalizeString(game.awayTeam).includes(normalizeString(homeTeam)))
+    }
+    if (scoreHome) {
+        newData = newData.filter(game => game.scoreHome == scoreHome)
+    }
+    if (scoreAway) {
+        newData = newData.filter(game => game.scoreAway == scoreAway)
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+
+    const paginatedData = newData.slice(startIndex, endIndex);
+
+    res.json({
+        currentPage: page, 
+        totalPages: Math.ceil(data.length / limit),
+        totalItems: newData.length,
+        itemsPerPage: limit,
+        results: paginatedData
+    });
 });
 
 // GET ALL GAMES
@@ -84,7 +171,7 @@ app.get('/', (req, res) => {
 app.get('/jogos/:campeonato', (req, res) => {
     try {
         const league = req.params.campeonato
-        const year = parseInt(req.query.year) || 2023
+        const year = parseInt(req.query.year) || 2024
         const filePath = path.join(__dirname, `data/${league}/${year}.xlsx`);
         const workbook = xlsx.readFile(filePath);
 
@@ -97,7 +184,7 @@ app.get('/jogos/:campeonato', (req, res) => {
         const team = req.query.team
         if (team) {
             teamName = normalizeString(team)
-            newData = newData.filter(game => normalizeString(game.homeTeam) === teamName || normalizeString(game.awayTeam) === teamName)
+            newData = newData.filter(game => normalizeString(game.homeTeam).includes(teamName) || normalizeString(game.awayTeam).includes(teamName))
         }
 
         const page = parseInt(req.query.page) || 1;
@@ -118,7 +205,7 @@ app.get('/jogos/:campeonato', (req, res) => {
 
     } catch (error) {
         console.error('Erro ao ler o arquivo XLSX:', error);
-        res.status(500).json({ error: 'Erro ao ler o arquivo XLSX' });
+        res.status(400).json({ error: 'Erro ao ler o arquivo XLSX' });
     }
 });
 
@@ -129,9 +216,9 @@ app.post('/save', (req, res) => {
         const {
             id,
             homeTeam,
-            homeTeamUrl,
+            homeTeamImage,
             awayTeam,
-            awayTeamUrl,
+            awayTeamImage,
             scoreHome,
             scoreAway,
             pointsHome, 
@@ -148,13 +235,9 @@ app.post('/save', (req, res) => {
 
         if (!id || 
             !homeTeam || 
-            !homeTeamUrl || 
+            !homeTeamImage || 
             !awayTeam || 
-            !awayTeamUrl || 
-            scoreHome === undefined || 
-            scoreAway === undefined ||
-            pointsHome === undefined ||
-            pointsAway === undefined ||
+            !awayTeamImage || 
             !date || 
             !time || 
             !country || 
@@ -166,9 +249,9 @@ app.post('/save', (req, res) => {
         const jogo = {
             id,
             homeTeam,
-            homeTeamUrl,
+            homeTeamImage,
             awayTeam,
-            awayTeamUrl,
+            awayTeamImage,
             scoreHome,
             scoreAway,
             pointsHome, 
@@ -182,26 +265,25 @@ app.post('/save', (req, res) => {
             country,
             round
         };
-
         saveGameToXLSX(jogo);
         console.log(`Jogo ${id} salvo com sucesso.`)
         res.status(200).json({ message: 'Jogo salvo com sucesso na planilha!' });
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao salvar o jogo' });
+        res.status(400).json({ error: 'Erro ao salvar o jogo' });
     }
 })
 
 // DELETE GAME
 
-app.delete('/remove/:id', (req, res) => {
+app.delete('/delete/:id', (req, res) => {
     try {
         const { id } = req.params;
 
         deleteGameFromXLSX(id);
-
+        console.log(`Jogo ${id} deletado com sucesso`)
         res.status(200).json({ message: 'Jogo deletado com sucesso!' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(400).json({ error: error.message });
     }
 });
 
@@ -219,7 +301,7 @@ function getGamesThisYear() {
     var response = []
     tourneys.forEach((tourney) => {
         try {
-            const filePath = path.join(__dirname, `data/${tourney}/2023.xlsx`);
+            const filePath = path.join(__dirname, `data/${tourney}/2024.xlsx`);
             const workbook = xlsx.readFile(filePath);
     
             const sheetName = workbook.SheetNames[0];
@@ -242,7 +324,91 @@ function getGamesThisYear() {
     return response
 }
 
-function parseDate(dateString) {
+function getYearGames(year) {
+    var response = []
+    tourneys.forEach((tourney) => {
+        try {
+            const filePath = path.join(__dirname, `data/${tourney}/${year}.xlsx`);
+            const workbook = xlsx.readFile(filePath);
+    
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+    
+            const data = xlsx.utils.sheet_to_json(sheet);
+            response = response.concat(data)
+        } catch (error) {
+            console.error('Erro ao ler o arquivo XLSX:', error);
+        }
+    })
+    return response
+}
+
+function getTourneyGames(tourney) {
+    var response = []
+    years.forEach((year) => {
+        try {
+            const filePath = path.join(__dirname, `data/${tourney}/${year}.xlsx`);
+            const workbook = xlsx.readFile(filePath);
+    
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+    
+            const data = xlsx.utils.sheet_to_json(sheet);
+            response = response.concat(data)
+        } catch (error) {
+            console.error('Erro ao ler o arquivo XLSX:', error);
+        }
+    })
+    return response
+}
+
+function getTourneyYearGames(tourney, year) {
+    var response = []
+    try {
+        const filePath = path.join(__dirname, `data/${tourney}/${year}.xlsx`);
+        const workbook = xlsx.readFile(filePath);
+    
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+    
+        const data = xlsx.utils.sheet_to_json(sheet);
+        response = response.concat(data)
+    } catch (error) {
+        console.error('Erro ao ler o arquivo XLSX:', error);
+    }
+    return response
+}
+
+function getAllGames() {
+    var response = []
+    years.forEach((year) => {
+        tourneys.forEach((tourney) => {
+            try {
+                const filePath = path.join(__dirname, `data/${tourney}/${year}.xlsx`);
+                const workbook = xlsx.readFile(filePath);
+        
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+        
+                const data = xlsx.utils.sheet_to_json(sheet);
+                response = response.concat(data)
+            } catch (error) {
+                console.error('Erro ao ler o arquivo XLSX:', error);
+            }
+        })    
+    })
+
+    // Ordena o vetor pela data mais recente
+    response.sort((a, b) => {
+        const dateA = parseDate(a.date, a.id);
+        const dateB = parseDate(b.date, b.id);
+        return dateB - dateA; // Ordena de forma decrescente (mais recente primeiro)
+    });
+
+    return response
+}
+
+function parseDate(dateString, id) {
     const [day, month, year] = dateString.split('/');
     return new Date(`${year}-${month}-${day}`);
 }
@@ -275,9 +441,9 @@ const saveGameToXLSX = (jogo) => {
     data.push({
         'id': jogo.id,
         'homeTeam': jogo.homeTeam,
-        'homeTeamImage': jogo.homeTeamUrl,
+        'homeTeamImage': jogo.homeTeamImage,
         'awayTeam': jogo.awayTeam,
-        'awayTeamImage': jogo.awayTeamUrl,
+        'awayTeamImage': jogo.awayTeamImage,
         'scoreHome': jogo.scoreHome,
         'scoreAway': jogo.scoreAway,
         'pointsHome': jogo.pointsHome,
