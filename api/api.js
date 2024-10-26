@@ -4,6 +4,7 @@ const port = 3000;
 const xlsx = require('xlsx');
 const path = require('path');
 const fs = require('fs');
+const { get } = require('http');
 
 const gamesSavePath = './data/myGames.xlsx'
 
@@ -16,7 +17,7 @@ const tourneys = [
 ]
 
 const years = [
-    2021, 2022, 2023, 2024
+    2024, 2023, 2022, 2021
 ]
 
 app.use(express.json());
@@ -285,6 +286,117 @@ app.delete('/delete/:id', (req, res) => {
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
+});
+
+// GET STADIUMS
+
+app.get('/stadiums', (req, res) => {
+    const tourney = req.query.tourney
+    const year = req.query.year
+    var games
+    if (tourney && year) {
+        games = getTourneyYearGames(tourney, year)
+    } else if (tourney) {
+        games = getTourneyGames(tourney)
+    } else if (year) {
+        games = getYearGames(year)
+    } else {
+        games = getAllGames()
+    }
+    var data = []
+    games.forEach(game => {
+        const regex = /^(.*?)\s*\((.*?)\)$/;
+        const result = game.stadium.match(regex);
+
+        if (result) {
+            const name = result[1];
+            const city = result[2];
+            const stadium = {
+                stadium: name,
+                city: city,
+                capacity: game.capacity
+            }
+            const exists = data.some(stadiumArray => stadiumArray.stadium === name);
+            if (!exists) {
+                data.push(stadium)
+            }
+        }
+    });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+
+    const paginatedData = data.slice(startIndex, endIndex);
+
+    res.status(200).json({
+        currentPage: page, 
+        totalPages: Math.ceil(data.length / limit),
+        totalItems: data.length,
+        itemsPerPage: limit,
+        results: paginatedData
+    });
+});
+
+// GET TEAMS
+
+app.get('/teams', (req, res) => {
+    const tourney = req.query.tourney
+    const year = req.query.year
+    var games
+    if (tourney && year) {
+        games = getTourneyYearGames(tourney, year)
+    } else if (tourney) {
+        games = getTourneyGames(tourney)
+    } else if (year) {
+        games = getYearGames(year)
+    } else {
+        games = getAllGames()
+    }
+    var data = []
+    games.forEach(game => {
+        const regex = /^(.*?)\s*\((.*?)\)$/;
+        const result = game.homeTeam.match(regex);
+
+        if (result) {
+            const name = result[1];
+            const country = result[2];
+            const team = {
+                team: name,
+                country: country
+            }
+            const exists = data.some(teamArray => teamArray.team === name);
+            if (!exists) {
+                data.push(team)
+            }
+        }
+        else {
+            const team = {
+                team: game.homeTeam,
+                country: "Bra"
+            }
+            const exists = data.some(teamArray => teamArray.team === game.homeTeam);
+            if (!exists) {
+                data.push(team)
+            }
+        }
+    });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+
+    const paginatedData = data.slice(startIndex, endIndex);
+
+    res.status(200).json({
+        currentPage: page, 
+        totalPages: Math.ceil(data.length / limit),
+        totalItems: data.length,
+        itemsPerPage: limit,
+        results: paginatedData
+    });
 });
 
 app.listen(port, () => {
