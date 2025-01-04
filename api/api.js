@@ -279,7 +279,6 @@ app.post('/save', (req, res) => {
 app.delete('/delete/:id', (req, res) => {
     try {
         const { id } = req.params;
-
         deleteGameFromXLSX(id);
         console.log(`Jogo ${id} deletado com sucesso`)
         res.status(200).json({ message: 'Jogo deletado com sucesso!' });
