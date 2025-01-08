@@ -4,13 +4,14 @@ from tqdm import tqdm
 
 scraper = FlashscoreScraper()
 
-tourneys = [#"america-do-sul/copa-libertadores",
-            "brasil/copa-betano-do-brasil"]
-            #"brasil/serie-b",
-            #"brasil/brasileirao-betano",
-            #"america-do-sul/copa-sul-americana"]
+tourneys = [#"america-do-sul/copa-libertadores"
+            #"brasil/copa-betano-do-brasil"
+            "brasil/serie-b",
+            "brasil/brasileirao-betano",
+            #"america-do-sul/copa-sul-americana"
+            ]
 
-years = [2021,2022]
+years = [2021,2022,2023,2024]
 
 for tourney in tourneys:
     for year in years:

@@ -6,13 +6,13 @@ def xlsx_to_csv(xlsx_file_folder,
                 csv_file_folder,
                 csv_file_name):
     try:
-        df = pd.read_excel(f'{xlsx_file_folder}/{xlsx_file_name}')
+        df = pd.read_excel(f'{xlsx_file_folder}/{xlsx_file_name}.xlsx')
         
         if not os.path.exists(csv_file_folder):
             os.makedirs(csv_file_folder)
-        csv_file = f'{csv_file_folder}/{csv_file_name}'
+        csv_file = f'{csv_file_folder}/{csv_file_name}.csv'
         df.to_csv(csv_file, index=False, encoding='utf-8')
-        print(f"Arquivo convertido com sucesso! Salvo como: {csv_file}")
+        print(f"Arquivo convertido com sucesso! Salvo como: {csv_file}.csv")
     except Exception as e:
         print(f"Erro ao converter o arquivo: {e}")
 
